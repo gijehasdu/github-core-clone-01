@@ -1,0 +1,5 @@
+import { createServer, type Server } from 'node:http';
+import { handleGit } from './git.ts';
+import { Buffer } from 'node:buffer';
+function json(res:any,status:number,value:unknown,headers:Record<string,string>={}){res.writeHead(status,{'content-type':'application/json; charset=utf-8',...headers});res.end(JSON.stringify(value)+'\n');}
+export function createApp():Server{return createServer(async(req,res)=>{try{const url=new URL(req.url??'/',`http://${req.headers.host??'localhost'}`),parts=url.pathname.split('/').filter(Boolean);if(req.method==='GET'&&url.pathname==='/healthz'){json(res,200,{ok:true});return;}if(parts[1]?.endsWith('.git')){await handleGit(req,res,url);return;}if(req.method==='GET'&&(url.pathname==='/api/v3'||url.pathname==='/api/v3/')){json(res,200,{current_user_url:'/api/v3/user',rate_limit_url:'/api/v3/rate_limit'},{'x-oauth-scopes':'repo, read:org'});return;}json(res,404,{message:'Not Found'});}catch{if(!res.headersSent)json(res,500,{message:'Internal Server Error'});else res.end();}});}
